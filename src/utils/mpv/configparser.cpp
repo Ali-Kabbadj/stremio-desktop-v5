@@ -16,7 +16,6 @@ void ConfigParser::LoadFullConfig()
 
     std::wstring exeDir = GetExeDirectory();
     std::wstring jsonPath = exeDir + L"\\portable_config\\script-opts\\menu.json";
-    std::wstring oldConfPath = exeDir + L"\\portable_config\\script-opts\\menu.conf";
 
     try
     {

@@ -6,6 +6,8 @@
 
 #include "../core/globals.h"
 #include "../utils/helpers.h"
+#include "../utils/mpv/contextmenu.h"
+#include "filewatcher.h"
 
 // Return the path to "portable_config/stremio-settings.ini"
 static std::wstring GetIniPath()
@@ -36,6 +38,16 @@ void LoadSettings()
     WideCharToMultiByte(CP_UTF8, 0, voBuffer, -1, narrowVO, 32, NULL, NULL);
     g_initialVO = narrowVO;
     g_currentVolume = GetPrivateProfileIntW(L"MPV", L"InitialVolume", 50, iniPath.c_str());
+
+    // Load MPV/uosc configuration
+    ConfigParser::LoadFullConfig();
+
+    // Initialize file watcher
+    static FileWatcher watcher;
+    watcher.WatchConfigDirectory(GetExeDirectory() + L"\\portable_config", []
+                                 {
+        ConfigParser::LoadFullConfig();
+        ContextMenuManager::Get().RefreshConfig(); });
 }
 
 void SaveSettings()

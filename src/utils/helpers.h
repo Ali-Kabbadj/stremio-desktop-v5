@@ -17,5 +17,8 @@ bool IsDuplicateProcessRunning(const std::vector<std::wstring>& targetProcesses)
 bool isSubtitle(const std::wstring& filePath);
 bool URLContainsAny(const std::wstring& url);
 bool FetchAndParseWhitelist();
+std::vector<std::string> SplitCommandString(const std::string& command);
+bool IsInMpvRegion(POINT screenPt);
+std::string GetUserProfilePicturesPath();
 
 #endif // HELPERS_H

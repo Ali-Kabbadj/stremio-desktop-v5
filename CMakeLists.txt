@@ -37,6 +37,12 @@ set(SOURCES
         src/utils/config.cpp
         src/utils/crashlog.h
         src/utils/crashlog.cpp
+        src/utils/mpv/configparser.cpp
+        src/utils/mpv/configparser.h
+        src/utils/mpv/contextmenu.cpp
+        src/utils/mpv/contextmenu.h
+        src/utils/filewatcher.cpp
+        src/utils/filewatcher.h
         src/mpv/player.h
         src/mpv/player.cpp
         src/node/server.cpp

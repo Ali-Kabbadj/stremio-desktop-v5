@@ -11,6 +11,7 @@
 #include "../utils/helpers.h"
 #include "../ui/mainwindow.h"
 #include "../utils/extensions.h"
+#include "../utils/mpv/contextmenu.h"
 
 static const wchar_t* EXEC_SHELL_SCRIPT = LR"JS_CODE(
 try {
@@ -194,7 +195,7 @@ void WaitAndRefreshIfNeeded()
             PostQuitMessage(1);
             exit(1);
         }
-    }).detach();
+        }).detach();
 }
 
 void InitWebView2(HWND hWnd)
@@ -205,7 +206,7 @@ void InitWebView2(HWND hWnd)
     if(options){
         options->put_AdditionalBrowserArguments(
             L"--autoplay-policy=no-user-gesture-required --disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection"
-        );
+            );
         Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions6> options6;
         if(SUCCEEDED(options.As(&options6))) {
             options6->put_AreBrowserExtensionsEnabled(TRUE);
@@ -235,75 +236,75 @@ void InitWebView2(HWND hWnd)
     HRESULT hr = CreateCoreWebView2EnvironmentWithOptions(
         browserExecutableFolder, nullptr, options.Get(),
         Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
-        [hWnd](HRESULT res, ICoreWebView2Environment* env)->HRESULT
-        {
-            if(!env) return E_FAIL;
-            env->CreateCoreWebView2Controller(
-                hWnd,
-                Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
-                [hWnd](HRESULT result, ICoreWebView2Controller* rawController)->HRESULT
-                {
-                    if (FAILED(result) || !rawController) return E_FAIL;
-                    std::cout << "[WEBVIEW]: Initializing WebView..." << std::endl;
-                    wil::com_ptr<ICoreWebView2Controller> m_webviewController = rawController;
-                    if (!m_webviewController) return E_FAIL;
+            [hWnd](HRESULT res, ICoreWebView2Environment* env)->HRESULT
+            {
+                if(!env) return E_FAIL;
+                env->CreateCoreWebView2Controller(
+                    hWnd,
+                    Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
+                    [hWnd](HRESULT result, ICoreWebView2Controller* rawController)->HRESULT
+                    {
+                        if (FAILED(result) || !rawController) return E_FAIL;
+                        std::cout << "[WEBVIEW]: Initializing WebView..." << std::endl;
+                        wil::com_ptr<ICoreWebView2Controller> m_webviewController = rawController;
+                        if (!m_webviewController) return E_FAIL;
 
-                    g_webviewController = m_webviewController.try_query<ICoreWebView2Controller4>();
-                    if (!g_webviewController) return E_FAIL;
+                        g_webviewController = m_webviewController.try_query<ICoreWebView2Controller4>();
+                        if (!g_webviewController) return E_FAIL;
 
-                    wil::com_ptr<ICoreWebView2> coreWebView;
-                    g_webviewController->get_CoreWebView2(&coreWebView);
-                    g_webview = coreWebView.try_query<ICoreWebView2_21>();
-                    if (!g_webview) return E_FAIL;
+                        wil::com_ptr<ICoreWebView2> coreWebView;
+                        g_webviewController->get_CoreWebView2(&coreWebView);
+                        g_webview = coreWebView.try_query<ICoreWebView2_21>();
+                        if (!g_webview) return E_FAIL;
 
-                    wil::com_ptr<ICoreWebView2Profile> webView2Profile;
-                    g_webview->get_Profile(&webView2Profile);
-                    g_webviewProfile = webView2Profile.try_query<ICoreWebView2Profile8>();
-                    if (!g_webviewProfile) return E_FAIL;
+                        wil::com_ptr<ICoreWebView2Profile> webView2Profile;
+                        g_webview->get_Profile(&webView2Profile);
+                        g_webviewProfile = webView2Profile.try_query<ICoreWebView2Profile8>();
+                        if (!g_webviewProfile) return E_FAIL;
 
-                    wil::com_ptr<ICoreWebView2Settings> webView2Settings;
-                    g_webview->get_Settings(&webView2Settings);
-                    auto settings = webView2Settings.try_query<ICoreWebView2Settings8>();
-                    if (!settings) return E_FAIL;
+                        wil::com_ptr<ICoreWebView2Settings> webView2Settings;
+                        g_webview->get_Settings(&webView2Settings);
+                        auto settings = webView2Settings.try_query<ICoreWebView2Settings8>();
+                        if (!settings) return E_FAIL;
 
-                    if(settings) {
-                        #ifndef DEBUG_BUILD
-                        settings->put_AreDevToolsEnabled(FALSE);
-                        #endif
-                        settings->put_IsStatusBarEnabled(FALSE);
-                        settings->put_AreBrowserAcceleratorKeysEnabled(FALSE);
-                        std::wstring customUA = std::wstring(L"StremioShell/") + Utf8ToWstring(APP_VERSION);
-                        settings->put_UserAgent(customUA.c_str());
-                        if(!g_allowZoom) {
-                            settings->put_IsZoomControlEnabled(FALSE);
-                            settings->put_IsPinchZoomEnabled(FALSE);
+                        if(settings) {
+                            #ifndef DEBUG_BUILD
+                                settings->put_AreDevToolsEnabled(FALSE);
+                            #endif
+                            settings->put_IsStatusBarEnabled(FALSE);
+                            settings->put_AreBrowserAcceleratorKeysEnabled(FALSE);
+                            std::wstring customUA = std::wstring(L"StremioShell/") + Utf8ToWstring(APP_VERSION);
+                            settings->put_UserAgent(customUA.c_str());
+                            if(!g_allowZoom) {
+                                settings->put_IsZoomControlEnabled(FALSE);
+                                settings->put_IsPinchZoomEnabled(FALSE);
+                            }
                         }
-                    }
-                    // Set background color
-                    COREWEBVIEW2_COLOR col={0,0,0,0};
-                    g_webviewController->put_DefaultBackgroundColor(col);
+                        // Set background color
+                        COREWEBVIEW2_COLOR col={0,0,0,0};
+                        g_webviewController->put_DefaultBackgroundColor(col);
 
-                    RECT rc; GetClientRect(hWnd,&rc);
-                    g_webviewController->put_Bounds(rc);
+                        RECT rc; GetClientRect(hWnd,&rc);
+                        g_webviewController->put_Bounds(rc);
 
-                    g_webview->AddScriptToExecuteOnDocumentCreated(EXEC_SHELL_SCRIPT,nullptr);
-                    g_webview->AddScriptToExecuteOnDocumentCreated(INJECTED_KEYDOWN_SCRIPT,nullptr);
+                        g_webview->AddScriptToExecuteOnDocumentCreated(EXEC_SHELL_SCRIPT,nullptr);
+                        g_webview->AddScriptToExecuteOnDocumentCreated(INJECTED_KEYDOWN_SCRIPT,nullptr);
 
-                    SetupExtensions();
-                    SetupWebMessageHandler();
+                        SetupExtensions();
+                        SetupWebMessageHandler();
 
-                    std::thread([](){
-                        std::wcout << L"[WEBVIEW]: Checking web ui endpoints..." << std::endl;
-                        std::wstring foundUrl = GetFirstReachableUrl();
-                        std::wstring* pResult = new std::wstring(foundUrl);
-                        g_webuiUrl = foundUrl;
-                        PostMessage(g_hWnd, WM_REACHABILITY_DONE, (WPARAM)pResult, 0);
-                        FetchAndParseWhitelist();
-                    }).detach();
-                    return S_OK;
-                }).Get()
-            );
-            return S_OK;
+                        std::thread([](){
+                            std::wcout << L"[WEBVIEW]: Checking web ui endpoints..." << std::endl;
+                            std::wstring foundUrl = GetFirstReachableUrl();
+                            std::wstring* pResult = new std::wstring(foundUrl);
+                            g_webuiUrl = foundUrl;
+                            PostMessage(g_hWnd, WM_REACHABILITY_DONE, (WPARAM)pResult, 0);
+                            FetchAndParseWhitelist();
+                        }).detach();
+                        return S_OK;
+                    }).Get()
+                );
+                return S_OK;
         }).Get()
     );
     if(FAILED(hr)) {
@@ -322,43 +323,43 @@ static void SetupWebMessageHandler()
     EventRegistrationToken navToken;
     g_webview->add_NavigationCompleted(
         Microsoft::WRL::Callback<ICoreWebView2NavigationCompletedEventHandler>(
-        [](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args)->HRESULT
-        {
-            BOOL isSuccess;
-            args->get_IsSuccess(&isSuccess);
+            [](ICoreWebView2* sender, ICoreWebView2NavigationCompletedEventArgs* args)->HRESULT
+            {
+                BOOL isSuccess;
+                args->get_IsSuccess(&isSuccess);
 
-            // Retrieve the final URL
-            wil::unique_cotaskmem_string rawUri;
-            sender->get_Source(&rawUri);
-            std::wstring finalUri = rawUri ? rawUri.get() : L"";
-            std::wcout << L"[WEBVIEW]: Navigation try to " << finalUri << std::endl;
+                // Retrieve the final URL
+                wil::unique_cotaskmem_string rawUri;
+                sender->get_Source(&rawUri);
+                std::wstring finalUri = rawUri ? rawUri.get() : L"";
+                std::wcout << L"[WEBVIEW]: Navigation try to " << finalUri << std::endl;
 
-            // Add back to stremio button if not on stremio
-            if (finalUri.find(g_webuiUrl) == std::wstring::npos) {
-                sender->ExecuteScript(INJECTED_BUTTON_SCRIPT, nullptr);
-            }
+                // Add back to stremio button if not on stremio
+                if (finalUri.find(g_webuiUrl) == std::wstring::npos) {
+                    sender->ExecuteScript(INJECTED_BUTTON_SCRIPT, nullptr);
+                }
 
-            if(isSuccess) {
-                std::cout<<"[WEBVIEW]: Navigation Complete - Success\n";
-                sender->ExecuteScript(EXEC_SHELL_SCRIPT, nullptr);
-                // Flush the script queue.
-                if (!g_scriptQueue.empty()) {
-                    for (const auto &script : g_scriptQueue) {
-                        sender->ExecuteScript(script.c_str(), nullptr);
+                if(isSuccess) {
+                    std::cout<<"[WEBVIEW]: Navigation Complete - Success\n";
+                    sender->ExecuteScript(EXEC_SHELL_SCRIPT, nullptr);
+                    // Flush the script queue.
+                    if (!g_scriptQueue.empty()) {
+                        for (const auto &script : g_scriptQueue) {
+                            sender->ExecuteScript(script.c_str(), nullptr);
+                        }
+                        g_scriptQueue.clear();
                     }
-                    g_scriptQueue.clear();
+                } else {
+                    std::cout<<"[WEBVIEW]: Navigation failed\n";
+                    if(g_hSplash && !g_waitStarted.exchange(true)) {
+                        WaitAndRefreshIfNeeded();
+                    }
+                    HandlePremidLogin(finalUri);
                 }
-            } else {
-                std::cout<<"[WEBVIEW]: Navigation failed\n";
-                if(g_hSplash && !g_waitStarted.exchange(true)) {
-                    WaitAndRefreshIfNeeded();
-                }
-                HandlePremidLogin(finalUri);
-            }
-            return S_OK;
-        }).Get(),
+                return S_OK;
+            }).Get(),
         &navToken
-    );
+        );
 
     EventRegistrationToken contentToken;
     g_webview->add_ContentLoading(
@@ -376,97 +377,124 @@ static void SetupWebMessageHandler()
     g_webview->add_DOMContentLoaded(
         Microsoft::WRL::Callback<ICoreWebView2DOMContentLoadedEventHandler>(
         [](ICoreWebView2* sender, ICoreWebView2DOMContentLoadedEventArgs* args)->HRESULT
-        {
-            sender->ExecuteScript(EXEC_SHELL_SCRIPT, nullptr);
-            return S_OK;
-        }).Get(),
+            {
+                sender->ExecuteScript(EXEC_SHELL_SCRIPT, nullptr);
+                return S_OK;
+            }).Get(),
         &domToken
-    );
+        );
 
     EventRegistrationToken contextMenuToken;
     g_webview->add_ContextMenuRequested(
         Microsoft::WRL::Callback<ICoreWebView2ContextMenuRequestedEventHandler>(
             [](ICoreWebView2* sender, ICoreWebView2ContextMenuRequestedEventArgs* args) -> HRESULT {
-                // Existing variable declarations
-                wil::com_ptr<ICoreWebView2ContextMenuItemCollection> items;
-                HRESULT hr = args->get_MenuItems(&items);
-                if (FAILED(hr) || !items) return hr;
+                // Get menu items collection
+                wil::com_ptr<ICoreWebView2ContextMenuItemCollection> menuItems;
+                args->get_MenuItems(&menuItems);
 
-                #ifdef DEBUG_BUILD
-                return S_OK; //DEV TOOLS DEBUG ONLY
-                #endif
-
-                // Get current URL
-                wil::unique_cotaskmem_string currentUri;
-                sender->get_Source(&currentUri);
-                std::wstring uri(currentUri.get());
-                bool isExtensionUrl = uri.starts_with(L"chrome-extension://");
-
-                // Get context menu target
-                wil::com_ptr<ICoreWebView2ContextMenuTarget> target;
-                hr = args->get_ContextMenuTarget(&target);
-                BOOL isEditable = FALSE;
-                if (SUCCEEDED(hr) && target) {
-                    target->get_IsEditable(&isEditable);
-                }
-
-                UINT count = 0;
-                items->get_Count(&count);
-
-                if (!isEditable) {
-                    // Allow only Back command (ID 33000) for extension URLs
-                    std::set<INT32> allowedCommands = isExtensionUrl ?
-                        std::set<INT32>{33000} :
-                        std::set<INT32>{};
-
-                    for (UINT i = 0; i < count;) {
-                        wil::com_ptr<ICoreWebView2ContextMenuItem> item;
-                        hr = items->GetValueAtIndex(i, &item);
-                        if (FAILED(hr)) {
-                            i++;
-                            continue;
-                        }
-
-                        INT32 commandId;
-                        item->get_CommandId(&commandId);
-
-                        if (allowedCommands.find(commandId) == allowedCommands.end()) {
-                            items->RemoveValueAtIndex(i);
-                            items->get_Count(&count);
-                        } else {
-                            i++;
-                        }
-                    }
+                // Check if click is in MPV area
+                POINT pt;
+                args->get_Location(&pt);
+                ClientToScreen(g_hWnd, &pt);
+                if (!IsInMpvRegion(pt))
+                {
+                    args->put_Handled(FALSE);
                     return S_OK;
                 }
 
-                // Define allowed command IDs for filtering
-                std::set<INT32> allowedCommandIds = {
-                    50151, // Cut
-                    50150, // Copy
-                    50152, // Paste
-                    50157, // Paste as plain text
-                    50156  // Select all
-                };
-
-                for (UINT i = 0; i < count;) {
+                // Clear default items
+                UINT count = 0;
+                menuItems->get_Count(&count);
+                while (count > 0)
+                {
                     wil::com_ptr<ICoreWebView2ContextMenuItem> item;
-                    hr = items->GetValueAtIndex(i, &item);
-                    if (FAILED(hr)) {
-                        i++;
-                        continue;
+                    menuItems->GetValueAtIndex(0, &item);
+                    if (item)
+                    {
+                        menuItems->RemoveValueAtIndex(0);
                     }
-
-                    INT32 commandId;
-                    item->get_CommandId(&commandId);
-
-                    if (allowedCommandIds.find(commandId) == allowedCommandIds.end()) {
-                        items->RemoveValueAtIndex(i);
-                        items->get_Count(&count);
-                    } else {
-                        i++;
-                    }
+                    menuItems->get_Count(&count);
                 }
+
+                // Get environment for creating menu items
+                wil::com_ptr<ICoreWebView2_4> webview2_4;
+                sender->QueryInterface(IID_PPV_ARGS(&webview2_4));
+                if (!webview2_4)
+                    return E_FAIL;
+
+                wil::com_ptr<ICoreWebView2Environment> environment;
+                webview2_4->get_Environment(&environment);
+                wil::com_ptr<ICoreWebView2Environment9> env9;
+                environment.query_to(&env9);
+                if (!env9)
+                    return E_FAIL;
+
+                // Load menu configuration
+                const MenuConfig *rootConfig = ConfigParser::GetMenuConfig("root");
+                if (!rootConfig)
+                    return S_OK;
+
+                // Create command map
+                static std::map<UINT, std::string> commandMap;
+                static UINT currentId = 1;
+                commandMap.clear();
+
+                auto &contextMenuManager = ContextMenuManager::Get();
+
+                std::function<void(const MenuConfig *, ICoreWebView2ContextMenuItemCollection *)> buildMenu;
+                buildMenu = [&](const MenuConfig *config, ICoreWebView2ContextMenuItemCollection *items)
+                {
+                    for (const auto &item : config->submenus)
+                    {
+                        wil::com_ptr<ICoreWebView2ContextMenuItem> menuItem;
+                        if (!item.submenus.empty())
+                        {
+                            // Create submenu item
+                            env9->CreateContextMenuItem(
+                                Utf8ToWstring(item.label).c_str(),
+                                nullptr,
+                                COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_SUBMENU,
+                                &menuItem);
+
+                            wil::com_ptr<ICoreWebView2ContextMenuItemCollection> subItems;
+                            menuItem->get_Children(&subItems);
+
+                            // Recursively build submenu
+                            buildMenu(&item, subItems.get());
+                        }
+                        else
+                        {
+                            // Create leaf menu item
+                            env9->CreateContextMenuItem(
+                                Utf8ToWstring(item.label).c_str(),
+                                nullptr,
+                                COREWEBVIEW2_CONTEXT_MENU_ITEM_KIND_COMMAND,
+                                &menuItem);
+
+                            // Register command
+                            const UINT cmdId = contextMenuManager.GetNextCommandId();
+                            contextMenuManager.RegisterCommand(cmdId, item.command);
+
+                            // Add handler
+                            EventRegistrationToken token;
+                            menuItem->add_CustomItemSelected(
+                                Microsoft::WRL::Callback<ICoreWebView2CustomItemSelectedEventHandler>(
+                                    [&contextMenuManager, cmdId](ICoreWebView2ContextMenuItem *, IUnknown *)
+                                    {
+                                        contextMenuManager.HandleCommand(cmdId);
+                                        return S_OK;
+                                    })
+                                    .Get(),
+                                &token);
+                        }
+
+                        // Add to parent menu
+                        UINT index;
+                        items->get_Count(&index);
+                        items->InsertValueAtIndex(index, menuItem.get());
+                    }
+                };
+                buildMenu(rootConfig, menuItems.get());
                 return S_OK;
             }).Get(),
         &contextMenuToken
@@ -476,15 +504,15 @@ static void SetupWebMessageHandler()
     g_webview->add_WebMessageReceived(
         Microsoft::WRL::Callback<ICoreWebView2WebMessageReceivedEventHandler>(
         [](ICoreWebView2* /*sender*/, ICoreWebView2WebMessageReceivedEventArgs* args)->HRESULT
-        {
-            wil::unique_cotaskmem_string msgRaw;
-            args->TryGetWebMessageAsString(&msgRaw);
+            {
+                wil::unique_cotaskmem_string msgRaw;
+                args->TryGetWebMessageAsString(&msgRaw);
             if(!msgRaw) return S_OK;
-            std::wstring wstr(msgRaw.get());
-            std::string str = WStringToUtf8(wstr);
-            HandleInboundJSON(str);
+                std::wstring wstr(msgRaw.get());
+                std::string str = WStringToUtf8(wstr);
+                HandleInboundJSON(str);
 
-            return S_OK;
+                return S_OK;
         }).Get(),
         &msgToken
     );
@@ -591,24 +619,24 @@ static void SetupExtensions()
                     entry.path().wstring().c_str(),
                     Microsoft::WRL::Callback<ICoreWebView2ProfileAddBrowserExtensionCompletedHandler>(
                     [folderName](HRESULT result, ICoreWebView2BrowserExtension* extension)->HRESULT
-                    {
-                        if (SUCCEEDED(result) && extension)
                         {
-                            wil::unique_cotaskmem_string extId;
-                            HRESULT hrId = extension->get_Id(&extId);
-                            if (SUCCEEDED(hrId) && extId)
+                            if (SUCCEEDED(result) && extension)
                             {
-                                // Store extension ID in the global map
-                                g_extensionMap[folderName] = extId.get();
-                                std::wcout << L"[EXTENSIONS]: " << folderName
-                                           << L" => " << extId.get() << std::endl;
-                            }
-                            std::wcout << L"[EXTENSIONS]: Added extension " << folderName << std::endl;
+                                wil::unique_cotaskmem_string extId;
+                                HRESULT hrId = extension->get_Id(&extId);
+                                if (SUCCEEDED(hrId) && extId)
+                                {
+                                    // Store extension ID in the global map
+                                    g_extensionMap[folderName] = extId.get();
+                                    std::wcout << L"[EXTENSIONS]: " << folderName
+                                               << L" => " << extId.get() << std::endl;
+                                }
+                                std::wcout << L"[EXTENSIONS]: Added extension " << folderName << std::endl;
                         } else {
-                            std::wstring err = L"[EXTENSIONS]: Failed to add extension => " + std::to_wstring(result);
-                            AppendToCrashLog(err);
-                        }
-                        return S_OK;
+                                std::wstring err = L"[EXTENSIONS]: Failed to add extension => " + std::to_wstring(result);
+                                AppendToCrashLog(err);
+                            }
+                            return S_OK;
                     }).Get()
                 );
                 if(FAILED(hr)) {
@@ -627,11 +655,11 @@ void refreshWeb(const bool refreshAll) {
     {
         HRESULT hr = g_webviewProfile->ClearBrowsingData(
             COREWEBVIEW2_BROWSING_DATA_KINDS_DISK_CACHE |
-            COREWEBVIEW2_BROWSING_DATA_KINDS_CACHE_STORAGE |
-            COREWEBVIEW2_BROWSING_DATA_KINDS_SERVICE_WORKERS |
-            COREWEBVIEW2_BROWSING_DATA_KINDS_FILE_SYSTEMS |
-            COREWEBVIEW2_BROWSING_DATA_KINDS_WEB_SQL |
-            COREWEBVIEW2_BROWSING_DATA_KINDS_INDEXED_DB,
+                COREWEBVIEW2_BROWSING_DATA_KINDS_CACHE_STORAGE |
+                COREWEBVIEW2_BROWSING_DATA_KINDS_SERVICE_WORKERS |
+                COREWEBVIEW2_BROWSING_DATA_KINDS_FILE_SYSTEMS |
+                COREWEBVIEW2_BROWSING_DATA_KINDS_WEB_SQL |
+                COREWEBVIEW2_BROWSING_DATA_KINDS_INDEXED_DB,
             Microsoft::WRL::Callback<ICoreWebView2ClearBrowsingDataCompletedHandler>(
                 [](HRESULT result) -> HRESULT {
                     std::cout << "[BROWSER]: Cleared browser cache successfully" << std::endl;

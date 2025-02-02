@@ -97,8 +97,8 @@ std::string decodeURIComponent(const std::string& encoded) {
             result.push_back(decodedChar);
             i += 2;
             } else {
-                result.push_back(c);
-            }
+            result.push_back(c);
+        }
     }
     return result;
 }
@@ -123,7 +123,7 @@ bool isSubtitle(const std::wstring& filePath) {
 
 bool IsEndpointReachable(const std::wstring& url) {
     HINTERNET hSession = WinHttpOpen(L"Reachability Check",
-        WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
+                                     WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
     if (!hSession) return false;
 
     // Set timeouts
@@ -151,7 +151,7 @@ bool IsEndpointReachable(const std::wstring& url) {
     }
 
     HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"HEAD", path.c_str(),
-        NULL, NULL, NULL, useSSL ? WINHTTP_FLAG_SECURE : 0);
+                                            NULL, NULL, NULL, useSSL ? WINHTTP_FLAG_SECURE : 0);
     if (!hRequest) {
         WinHttpCloseHandle(hConnect);
         WinHttpCloseHandle(hSession);
@@ -172,8 +172,8 @@ bool IsEndpointReachable(const std::wstring& url) {
 
     if (received) {
         WinHttpQueryHeaders(hRequest,
-            WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
-            NULL, &statusCode, &statusSize, NULL);
+                            WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                            NULL, &statusCode, &statusSize, NULL);
     }
 
     WinHttpCloseHandle(hRequest);
@@ -204,7 +204,7 @@ bool URLContainsAny(const std::wstring& url) {
 
 bool FetchAndParseWhitelist() {
     HINTERNET hSession = WinHttpOpen(L"DomainWhitelist Updater",
-        WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
+                                     WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, NULL, NULL, 0);
     if (!hSession) return false;
 
     WinHttpSetTimeouts(hSession, 3000, 3000, 3000, 3000);
@@ -231,7 +231,7 @@ bool FetchAndParseWhitelist() {
     }
 
     HINTERNET hRequest = WinHttpOpenRequest(hConnect, L"GET", path.c_str(),
-        NULL, NULL, NULL, useSSL ? WINHTTP_FLAG_SECURE : 0);
+                                            NULL, NULL, NULL, useSSL ? WINHTTP_FLAG_SECURE : 0);
     if (!hRequest) {
         WinHttpCloseHandle(hConnect);
         WinHttpCloseHandle(hSession);
@@ -284,4 +284,71 @@ bool FetchAndParseWhitelist() {
     }
 
     return false;
+}
+
+std::string GetUserProfilePicturesPath()
+{
+    wchar_t userProfile[MAX_PATH];
+    if (GetEnvironmentVariableW(L"USERPROFILE", userProfile, MAX_PATH))
+    {
+        std::wstring path = std::wstring(userProfile) + L"\\Pictures";
+
+        // Convert to UTF-8 (since mpv requires UTF-8 strings)
+        int size_needed = WideCharToMultiByte(CP_UTF8, 0, path.c_str(), -1, nullptr, 0, nullptr, nullptr);
+        std::string utf8Path(size_needed, 0);
+        WideCharToMultiByte(CP_UTF8, 0, path.c_str(), -1, &utf8Path[0], size_needed, nullptr, nullptr);
+
+        return utf8Path;
+    }
+    return "C:\\Users\\Default\\Pictures"; // Fallback in case of failure
+}
+
+std::vector<std::string> SplitCommandString(const std::string &command)
+{
+    std::vector<std::string> args;
+    std::string current;
+    bool inQuote = false;
+
+    for (char c : command)
+    {
+        if (c == '"')
+        {
+            inQuote = !inQuote;
+        }
+        else if (std::isspace(c) && !inQuote)
+        {
+            if (!current.empty())
+            {
+                args.push_back(current);
+                current.clear();
+            }
+        }
+        else
+        {
+            current += c;
+        }
+    }
+
+    if (!current.empty())
+    {
+        args.push_back(current);
+    }
+
+    return args;
+}
+
+bool IsInMpvRegion(POINT screenPt)
+{
+    RECT mpvRect;
+    HWND mpvHwnd = FindWindowExW(g_hWnd, nullptr, L"mpv", nullptr);
+    if (!mpvHwnd)
+    {
+        std::cout << "[CONTEXT MENU] MPV window not found" << std::endl;
+        return false;
+    }
+    GetWindowRect(mpvHwnd, &mpvRect);
+    bool inRegion = PtInRect(&mpvRect, screenPt);
+    std::cout << "[CONTEXT MENU] Point(" << screenPt.x << "," << screenPt.y
+              << ") in MPV region: " << (inRegion ? "yes" : "no") << std::endl;
+    return inRegion;
 }

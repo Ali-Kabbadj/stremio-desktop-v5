@@ -20,6 +20,7 @@
 #include "updater/updater.h"
 #include "utils/helpers.h"
 #include "utils/config.h"
+#include "utils/mpv/contextmenu.h"
 // This started as 1-week project so please don't take the code to seriously
 int main(int argc, char* argv[])
 {
@@ -136,6 +137,12 @@ int main(int argc, char* argv[])
         DestroyWindow(g_hWnd);
         return 1;
     }
+
+    // set MPV context menu handler
+    ContextMenuManager::Get().SetCommandHandler([](const std::string &command)
+                                                {
+    HandleMpvCommand(SplitCommandString(command));
+    std::cout << "[MPV CONTEXT MENU HANDLER] Executing command: " << command << std::endl; });
 
     // node
     if(g_streamingServer){

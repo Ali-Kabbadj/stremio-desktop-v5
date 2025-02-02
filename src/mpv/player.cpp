@@ -264,6 +264,8 @@ bool InitMPV(HWND hwnd)
     mpv_set_property_string(g_mpv,"audio-fallback-to-null","yes");
     mpv_set_property_string(g_mpv,"audio-client-name",APP_NAME);
     mpv_set_property_string(g_mpv,"title",APP_NAME);
+    mpv_set_property_string(g_mpv, "screenshot-directory", "%USERPROFILE%/Pictures");
+    mpv_set_property_string(g_mpv, "screenshot-directory", GetUserProfilePicturesPath().c_str());
 
     return true;
 }

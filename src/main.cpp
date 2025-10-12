@@ -20,7 +20,7 @@
 #include "updater/updater.h"
 #include "utils/helpers.h"
 #include "utils/config.h"
-// This started as 1-week project so please don't take the code to seriously
+
 int main(int argc, char* argv[])
 {
     // Catch unhandled exceptions

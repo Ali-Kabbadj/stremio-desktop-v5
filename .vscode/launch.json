@@ -1,0 +1,42 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Build: C++ Host",
+      "type": "cppvsdbg",
+      "cwd": "${workspaceFolder}",
+      "request": "launch",
+      "program": "cmd.exe",
+      "args": ["/C", "echo Build finished."],
+      "preLaunchTask": "Build: C++ Host",
+      "console": "integratedTerminal",
+      "presentation": { "hidden": false, "group": "Build Tasks", "order": 4 }
+    },
+    {
+      "name": "Launch App",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/Stremio.exe",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "preLaunchTask": "CMake: Configure & Build",
+      "environment": [
+        {
+          "name": "PATH",
+          "value": "${workspaceFolder}/deps/libmpv/x86_64;${env:PATH}"
+        },
+        {
+          "name": "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+          "value": "--remote-debugging-port=9222 --ignore-certificate-errors"
+        }
+      ],
+      "stopAtEntry": false,
+      "logging": {
+        "moduleLoad": false,
+        "exceptions": false,
+        "programOutput": true
+      }
+    }
+  ]
+}

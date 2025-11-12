@@ -1,0 +1,7 @@
+[submodule "deps/libmpv"]
+	path = deps/libmpv
+	url = https://github.com/Zaarrg/libmpv
+	branch = master
+[submodule "deps/discord-rpc"]
+	path = deps/discord-rpc
+	url = https://github.com/discord/discord-rpc.git

@@ -1,0 +1,67 @@
+{
+  "version": "5.0.20",
+  "description": "Stremio Desktop v5 Community",
+  "homepage": "https://github.com/Zaarrg/stremio-desktop-v5",
+  "license": "GPL-3.0",
+  "architecture": {
+    "64bit": {
+      "url": "https://github.com/Zaarrg/stremio-desktop-v5/releases/download/5.0.0-beta.20/Stremio.5.0.20-x64.exe",
+      "hash": "8ea913d802602b3aca1d6333e142a9a11cf070015f2d4ff7f5a4f1d543448879",
+      "installer": {
+        "args": [
+          "/S"
+        ]
+      },
+      "uninstaller": {
+        "script": [
+          "$uninstaller = Join-Path $env:LOCALAPPDATA 'Programs\\LNV\\Stremio-5\\Uninstall.exe'",
+          "if (Test-Path $uninstaller) {",
+          "  Start-Process $uninstaller -ArgumentList '/S','/keepdata' -Wait",
+          "} else {",
+          "  Write-Host \"Uninstaller not found: $uninstaller\"",
+          "}"
+        ]
+      }
+    },
+    "32bit": {
+      "url": "https://github.com/Zaarrg/stremio-desktop-v5/releases/download/5.0.0-beta.20/Stremio.5.0.20-x86.exe",
+      "hash": "659177650030b33c19e6cacad9f879fa25c3f91f2ecc8678a657998430beed7d",
+      "installer": {
+        "args": [
+          "/S"
+        ]
+      },
+      "uninstaller": {
+        "script": [
+          "$uninstaller = Join-Path $env:LOCALAPPDATA 'Programs\\LNV\\Stremio-5\\Uninstall.exe'",
+          "if (Test-Path $uninstaller) {",
+          "  Start-Process $uninstaller -ArgumentList '/S','/keepdata' -Wait",
+          "} else {",
+          "  Write-Host \"Uninstaller not found: $uninstaller\"",
+          "}"
+        ]
+      }
+    }
+  },
+  "checkver": {
+    "github": "Zaarrg/stremio-desktop-v5",
+    "regex": "Stremio\\.([\\d.]+)-x64\\.exe"
+  },
+  "autoupdate": {
+    "architecture": {
+      "64bit": {
+        "url": "https://github.com/Zaarrg/stremio-desktop-v5/releases/download/$version/Stremio.$version-x64.exe",
+        "hash": {
+          "url": "$url.sha256"
+        }
+      },
+      "32bit": {
+        "url": "https://github.com/Zaarrg/stremio-desktop-v5/releases/download/$version/Stremio.$version-x86.exe",
+        "hash": {
+          "url": "$url.sha256"
+        }
+      }
+    }
+  },
+  "notes": "Stremio Desktop v5 using silent install via /S. Built-in auto-updater may override Scoop-managed updates."
+}

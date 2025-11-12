@@ -1,0 +1,12 @@
+{
+  "name": "myapp",
+  "version": "5.0.18",
+  "dependencies": [
+    "openssl",
+    "curl",
+    "nlohmann-json",
+    "webview2",
+    "wil",
+    "discord-rpc"
+  ]
+}

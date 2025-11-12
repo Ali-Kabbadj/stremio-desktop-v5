@@ -1,0 +1,40 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build: C++ Host",
+      "type": "shell",
+      "command": "call \"${env:ProgramFiles}\\Microsoft Visual Studio\\18\\Insiders\\Common7\\Tools\\VsDevCmd.bat\" -arch=amd64 && cmake -S . -B ./build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && cmake --build ./build --config Release && xcopy /Y .\\build\\Stremio.exe ..\\..\\dist\\win-x64\\",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "shell": {
+          "executable": "cmd.exe",
+          "args": ["/d", "/c"]
+        }
+      },
+      "group": "build",
+      "problemMatcher": ["$msCompile"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "echo": true
+      }
+    },
+    {
+      "label": "CMake: Configure & Build",
+      "type": "shell",
+      "command": "call \"${env:ProgramFiles}\\Microsoft Visual Studio\\18\\Insiders\\Common7\\Tools\\VsDevCmd.bat\" -arch=amd64 && cmake -S ${workspaceFolder} -B ${workspaceFolder}/build -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && cmake --build ${workspaceFolder}/build --config Debug",
+      "options": {
+        "shell": {
+          "executable": "cmd.exe",
+          "args": ["/d", "/c"]
+        },
+        "env": {
+          "VCPKG_VISUAL_STUDIO_PATH": "${env:ProgramFiles}\\Microsoft Visual Studio\\18\\Insiders"
+        }
+      },
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$msCompile"]
+    }
+  ]
+}

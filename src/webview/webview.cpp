@@ -3,7 +3,6 @@
 #include <thread>
 #include <cmath>
 #include <fstream>
-#include <iostream>
 #include <Shlwapi.h>
 #include <wrl.h>
 #include "../core/globals.h"
@@ -11,6 +10,7 @@
 #include "../utils/helpers.h"
 #include "../ui/mainwindow.h"
 #include "../utils/extensions.h"
+#include "../logger/logger.h"
 
 static const wchar_t* EXEC_SHELL_SCRIPT = LR"JS_CODE(
 try {
@@ -167,7 +167,7 @@ void WaitAndRefreshIfNeeded()
         const int initialWaitTime = 5;
         const int maxWaitTime = 60;
 
-        std::cout << "[WEBVIEW]: Web Page could not be reached, retrying..." << std::endl;
+        LOG_WARN("WaitAndRefreshIfNeeded", "Web Page could not be reached, retrying...");
 
         for(int attempt=0; attempt<maxAttempts; ++attempt)
         {
@@ -177,11 +177,11 @@ void WaitAndRefreshIfNeeded()
             std::this_thread::sleep_for(std::chrono::seconds(waitTime));
 
             if(g_isAppReady){
-                std::cout << "[WEBVIEW]: Web Page ready!" << std::endl;
+                LOG_INFO("WaitAndRefreshIfNeeded", "Web Page ready!");
                 g_waitStarted.store(false);
                 return;
             }
-            std::cout << "[WEBVIEW]: Refreshing attempt " << (attempt+1) << std::endl;
+            LOG_INFO("WaitAndRefreshIfNeeded", "Refreshing attempt " + std::to_string(attempt+1));
             refreshWeb(false);
         }
         if(!g_isAppReady) {
@@ -199,8 +199,7 @@ void WaitAndRefreshIfNeeded()
 
 void InitWebView2(HWND hWnd)
 {
-    std::cout << "[WEBVIEW]: Starting webview..." << std::endl;
-    // Setup environment
+    LOG_INFO("InitWebView2", "Starting webview...");
     Microsoft::WRL::ComPtr<ICoreWebView2EnvironmentOptions> options = Microsoft::WRL::Make<CoreWebView2EnvironmentOptions>();
     if(options){
         options->put_AdditionalBrowserArguments(
@@ -216,24 +215,20 @@ void InitWebView2(HWND hWnd)
         }
     }
 
-    // Check for local Edge runtime in "portable_config/EdgeWebView"
-    std::wstring exeDir;
-    {
-        wchar_t buf[MAX_PATH];
-        GetModuleFileNameW(nullptr, buf, MAX_PATH);
-        exeDir = buf;
-        size_t pos = exeDir.find_last_of(L"\\/");
-        if(pos!=std::wstring::npos) exeDir.erase(pos);
-    }
+    std::wstring exeDir = GetExeDirectory();
     std::wstring browserDir = exeDir + L"\\portable_config\\EdgeWebView";
     const wchar_t* browserExecutableFolder = nullptr;
     if(DirectoryExists(browserDir)) {
         browserExecutableFolder = browserDir.c_str();
-        std::wcout << L"[WEBVIEW]: Using local WebView2: " << browserDir << std::endl;
+        LOG_INFO("InitWebView2", "Using local WebView2: " + WStringToUtf8(browserDir));
     }
 
+    std::wstring userDataFolder = exeDir + L"\\portable_config\\WebView2_Data";
+
     HRESULT hr = CreateCoreWebView2EnvironmentWithOptions(
-        browserExecutableFolder, nullptr, options.Get(),
+        browserExecutableFolder, 
+        userDataFolder.c_str(),
+        options.Get(),
         Microsoft::WRL::Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
         [hWnd](HRESULT res, ICoreWebView2Environment* env)->HRESULT
         {
@@ -244,7 +239,7 @@ void InitWebView2(HWND hWnd)
                 [hWnd](HRESULT result, ICoreWebView2Controller* rawController)->HRESULT
                 {
                     if (FAILED(result) || !rawController) return E_FAIL;
-                    std::cout << "[WEBVIEW]: Initializing WebView..." << std::endl;
+                    LOG_INFO("InitWebView2", "Initializing WebView...");
                     wil::com_ptr<ICoreWebView2Controller> m_webviewController = rawController;
                     if (!m_webviewController) return E_FAIL;
 
@@ -279,7 +274,6 @@ void InitWebView2(HWND hWnd)
                             settings->put_IsPinchZoomEnabled(FALSE);
                         }
                     }
-                    // Set background color
                     COREWEBVIEW2_COLOR col={0,0,0,0};
                     g_webviewController->put_DefaultBackgroundColor(col);
 
@@ -295,7 +289,7 @@ void InitWebView2(HWND hWnd)
                     SetupWebMessageHandler();
 
                     std::thread([](){
-                        std::wcout << L"[WEBVIEW]: Checking web ui endpoints..." << std::endl;
+                        LOG_INFO("InitWebView2", "Checking web ui endpoints...");
                         std::wstring foundUrl = GetFirstReachableUrl();
                         std::wstring* pResult = new std::wstring(foundUrl);
                         g_webuiUrl = foundUrl;
@@ -333,7 +327,7 @@ static void SetupWebMessageHandler()
             wil::unique_cotaskmem_string rawUri;
             sender->get_Source(&rawUri);
             std::wstring finalUri = rawUri ? rawUri.get() : L"";
-            std::wcout << L"[WEBVIEW]: Navigation try to " << finalUri << std::endl;
+            LOG_INFO("SetupWebMessageHandler", "Navigation try to " + WStringToUtf8(finalUri));
 
             // Add back to stremio button if not on stremio
             if (finalUri.find(g_webuiUrl) == std::wstring::npos) {
@@ -341,7 +335,7 @@ static void SetupWebMessageHandler()
             }
 
             if(isSuccess) {
-                std::cout<<"[WEBVIEW]: Navigation Complete - Success\n";
+                LOG_INFO("SetupWebMessageHandler", "Navigation Complete - Success");
                 sender->ExecuteScript(EXEC_SHELL_SCRIPT, nullptr);
                 // Flush the script queue.
                 if (!g_scriptQueue.empty()) {
@@ -351,7 +345,7 @@ static void SetupWebMessageHandler()
                     g_scriptQueue.clear();
                 }
             } else {
-                std::cout<<"[WEBVIEW]: Navigation failed\n";
+                LOG_WARN("SetupWebMessageHandler", "Navigation failed");
                 if(g_hSplash && !g_waitStarted.exchange(true)) {
                     WaitAndRefreshIfNeeded();
                 }
@@ -366,7 +360,7 @@ static void SetupWebMessageHandler()
     g_webview->add_ContentLoading(
         Microsoft::WRL::Callback<ICoreWebView2ContentLoadingEventHandler>(
             [](ICoreWebView2* sender, ICoreWebView2ContentLoadingEventArgs* args) -> HRESULT {
-                std::cout<<"[WEBVIEW]: Content loaded\n";
+                LOG_INFO("SetupWebMessageHandler", "Content loaded");
                 sender->ExecuteScript(EXEC_SHELL_SCRIPT, nullptr);
                 return S_OK;
             }
@@ -607,10 +601,9 @@ static void SetupExtensions()
                             {
                                 // Store extension ID in the global map
                                 g_extensionMap[folderName] = extId.get();
-                                std::wcout << L"[EXTENSIONS]: " << folderName
-                                           << L" => " << extId.get() << std::endl;
+                                LOG_INFO("SetupExtensions", WStringToUtf8(folderName) + " => " + WStringToUtf8(extId.get()));
                             }
-                            std::wcout << L"[EXTENSIONS]: Added extension " << folderName << std::endl;
+                            LOG_INFO("SetupExtensions", "Added extension " + WStringToUtf8(folderName));
                         } else {
                             std::wstring err = L"[EXTENSIONS]: Failed to add extension => " + std::to_wstring(result);
                             AppendToCrashLog(err);
@@ -625,7 +618,7 @@ static void SetupExtensions()
             }
         }
     } catch(...) {
-        std::cout<<"[EXTENSIONS]: No extensions folder or iteration failed.\n";
+        LOG_INFO("SetupExtensions", "No extensions folder or iteration failed.");
     }
 }
 
@@ -641,7 +634,7 @@ static void SetupWebMods()
 
     const std::filesystem::path root = std::filesystem::path(exeDir) / L"portable_config" / L"webmods";
     if (!std::filesystem::exists(root) || !std::filesystem::is_directory(root)) {
-        std::wcout << L"[WEBMODS] Folder not found: " << root.wstring() << std::endl;
+        LOG_INFO("SetupWebMods", "Folder not found: " + WStringToUtf8(root.wstring()));
         return;
     }
 
@@ -678,7 +671,7 @@ static void SetupWebMods()
         const std::wstring id = makeId(p);
         const std::wstring script = MakeInjectCssScript(id, content);
         g_webview->AddScriptToExecuteOnDocumentCreated(script.c_str(), nullptr);
-        std::wcout << L"[WEBMODS] CSS: " << relStr(p) << std::endl;
+        LOG_INFO("SetupWebMods", "CSS: " + WStringToUtf8(relStr(p)));
     }
 
     for (const auto& p : jsFiles) {
@@ -687,7 +680,7 @@ static void SetupWebMods()
         const std::wstring id = makeId(p);
         const std::wstring script = MakeInjectJsScript(id, content);
         g_webview->AddScriptToExecuteOnDocumentCreated(script.c_str(), nullptr);
-        std::wcout << L"[WEBMODS] JS: " << relStr(p) << std::endl;
+        LOG_INFO("SetupWebMods", "JS: " + WStringToUtf8(relStr(p)));
     }
 }
 
@@ -703,13 +696,13 @@ void refreshWeb(const bool refreshAll) {
             COREWEBVIEW2_BROWSING_DATA_KINDS_INDEXED_DB,
             Microsoft::WRL::Callback<ICoreWebView2ClearBrowsingDataCompletedHandler>(
                 [](HRESULT result) -> HRESULT {
-                    std::cout << "[BROWSER]: Cleared browser cache successfully" << std::endl;
+                    LOG_INFO("refreshWeb", "Cleared browser cache successfully");
                     return S_OK;
                 }
             ).Get()
         );
         if (FAILED(hr)) {
-            std::cout << "[BROWSER]: Could not clear browser cache" << std::endl;
+            LOG_WARN("refreshWeb", "Could not clear browser cache");
         }
     }
     if (g_webview) {

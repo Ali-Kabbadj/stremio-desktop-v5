@@ -5,7 +5,8 @@
   "git.openRepositoryInParentFolders": "always",
   "cmake.buildBeforeRun": true,
   "cmake.configureOnEdit": true,
-  "cmake.configureOnOpen": true,
+  "cmake.configureOnOpen": false,
+  "cmake.useCMakePresets": "never",
   "cmake.sourceDirectory": "${workspaceFolder}",
   "cmake.buildDirectory": "${workspaceFolder}/build",
   "cmake.environment": {

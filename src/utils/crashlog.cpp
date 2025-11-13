@@ -9,9 +9,11 @@
 #include "../utils/helpers.h"
 #include <gdiplus.h>
 #include <sstream>
-#include "discord_rpc.h"
-
 #include "config.h"
+#include "../logger/logger.h"
+
+#include <discord-rpc.hpp>
+
 
 static std::wstring GetDailyCrashLogPath()
 {
@@ -52,21 +54,19 @@ void AppendToCrashLog(const std::string& message)
 
 void Cleanup()
 {
-    //Save Settings
+    Logger::Cleanup();
     SaveSettings();
-    // Shut down mpv
     CleanupMPV();
-    // Shut down Node
     StopNodeServer();
-    // Remove tray icon
     RemoveTrayIcon();
 
-    // GDI+ cleanup
     if(g_gdiplusToken) {
         Gdiplus::GdiplusShutdown(g_gdiplusToken);
     }
 
-    Discord_Shutdown();
+    // Correct function name is ShutdownDiscord
+    discord::RPCManager::get().shutdown(); 
+
 
     UnregisterHotKey(g_hWnd, 1);
 }

@@ -1,8 +1,8 @@
 #include "extensions.h"
-
-#include <iostream>
 #include <string>
 #include "../core/globals.h"
+#include "../logger/logger.h"
+#include "../utils/helpers.h"
 
 bool HandleExtensions(const std::wstring& finalUri) {
     bool handledPremid = HandlePremidLogin(finalUri);
@@ -20,7 +20,7 @@ bool HandlePremidLogin(const std::wstring& finalUri) {
         if (it != g_extensionMap.end()) {
             extensionId = it->second;
         } else {
-            std::wcout << L"[EXTENSIONS]: Extension id not found\n";
+            LOG_WARN("HandlePremidLogin", "Extension id not found");
             g_webview->Navigate(g_webuiUrl.c_str());
             return true;
         }
@@ -56,7 +56,7 @@ bool HandleStylusUsoInstall(const std::wstring& finalUri) {
         if (it != g_extensionMap.end()) {
             extensionId = it->second;
         } else {
-            std::wcout << L"[EXTENSIONS]: Extension id not found\n";
+            LOG_WARN("HandleStylusUsoInstall", "Extension id not found");
             g_webview->Navigate(g_webuiUrl.c_str());
             return true;
         }

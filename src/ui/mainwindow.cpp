@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 
 #include <fstream>
-#include <iostream>
 #include <windowsx.h>
 #include <ShlObj.h>
 
@@ -16,6 +15,7 @@
 #include "../webview/webview.h"
 #include "../updater/updater.h"
 #include "../utils/discord.h"
+#include "../logger/logger.h"
 
 // Single-instance
 bool FocusExistingInstance(const std::wstring &protocolArg)
@@ -45,7 +45,7 @@ bool CheckSingleInstance(int argc, char* argv[], std::wstring &outProtocolArg)
 {
     g_hMutex = CreateMutexW(nullptr, FALSE, L"SingleInstanceMtx_StremioWebShell");
     if(!g_hMutex){
-        std::wcerr << L"CreateMutex failed => fallback to multi.\n";
+        LOG_ERROR("CheckSingleInstance", "CreateMutex failed => fallback to multi.");
         AppendToCrashLog("CreateMutex failed => fallback to multi.");
         return true;
     }
@@ -125,9 +125,7 @@ void SendToJS(const std::string &eventName, const nlohmann::json &eventData)
     std::wstring wpayload(payload.begin(), payload.end());
     g_webview->PostWebMessageAsString(wpayload.c_str());
 
-#ifdef DEBUG_LOG
-    std::cout << "[Native->JS] " << payload << "\n";
-#endif
+    // LOG_DEBUG("SendToJS", "[Native->JS] " + payload);
 }
 
 void HandleEvent(const std::string &ev, std::vector<std::string> &args)
@@ -166,7 +164,7 @@ void HandleEvent(const std::string &ev, std::vector<std::string> &args)
 
         // Expecting arguments: hovered_seconds, x, y
         if(args.size() < 3) {
-            std::cerr << "seek-hover requires at least 3 arguments.\n";
+            LOG_WARN("HandleEvent", "seek-hover requires at least 3 arguments.");
             return;
         }
 
@@ -175,7 +173,7 @@ void HandleEvent(const std::string &ev, std::vector<std::string> &args)
         try {
             yCoord = std::stoi(args[2]);
         } catch(const std::exception &e) {
-            std::cerr << "Error converting y coordinate: " << e.what() << "\n";
+            LOG_WARN("HandleEvent", "Error converting y coordinate: " + std::string(e.what()));
             return;
         }
 
@@ -230,7 +228,7 @@ void HandleEvent(const std::string &ev, std::vector<std::string> &args)
     } else if (ev == "activity") {
         SetDiscordPresenceFromArgs(args);
     } else {
-        std::cout<<"Unknown event="<<ev<<"\n";
+        LOG_WARN("HandleEvent", "Unknown event=" + ev);
     }
 }
 
@@ -238,9 +236,7 @@ void HandleEvent(const std::string &ev, std::vector<std::string> &args)
 void HandleInboundJSON(const std::string &msg)
 {
     try {
-#ifdef DEBUG_LOG
-        std::cout << "[JS -> NATIVE]: " << msg << std::endl;
-#endif
+        // LOG_DEBUG("HandleInboundJSON", "[JS -> NATIVE]: " + msg);
 
         auto j = nlohmann::json::parse(msg);
         int type = 0;
@@ -317,14 +313,14 @@ void HandleInboundJSON(const std::string &msg)
                     HandleEvent(ev, argVec);
                 }
                 else {
-                    std::cout << "[WARN] invokeMethod=handleInboundJSON => no args array?\n";
+                    LOG_WARN("HandleInboundJSON", "invokeMethod=handleInboundJSON => no args array?");
                 }
             }
             return;
         }
-        std::cout<<"Unknown Inbound event="<<msg<<"\n";
+        // LOG_WARN("HandleInboundJSON", "Unknown Inbound event=" + msg);
     } catch(std::exception &ex) {
-        std::cerr<<"JSON parse error:"<<ex.what()<<"\n";
+        // LOG_ERROR("HandleInboundJSON", "JSON parse error:" + std::string(ex.what()));
     }
 }
 
@@ -352,6 +348,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             SWP_NOZORDER | SWP_NOACTIVATE);
         break;
     }
+    case WM_RUN_UPDATER: 
+    {
+        std::thread(RunAutoUpdaterOnce).detach();
+        break;
+    }
     case WM_NOTIFY_FLUSH: {
         if (g_isAppReady) {
             for(const auto& pendingMsg : g_outboundMessages) {
@@ -377,7 +378,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             if (!pUrl->empty() && g_webview)
             {
-                std::wcout << L"[WEBVIEW]: Navigating to " << *pUrl << std::endl;
+                LOG_INFO("WndProc", "Navigating to " + WStringToUtf8(*pUrl));
                 g_webview->Navigate(pUrl->c_str());
             }
             else
@@ -469,7 +470,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         if (pcds && pcds->dwData == 1 && pcds->lpData) {
             // Assuming data is a wide string containing the URL or file path
             std::wstring receivedUrl((wchar_t*)pcds->lpData, pcds->cbData / sizeof(wchar_t));
-            std::wcout << L"Received URL in main instance: " << receivedUrl << std::endl;
+            LOG_INFO("WndProc", "Received URL in main instance: " + WStringToUtf8(receivedUrl));
 
             // Check if received URL is a file and exists
             if (FileExists(receivedUrl)) {
@@ -483,7 +484,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                     std::ifstream ifs(utf8FilePath, std::ios::binary);
                     if (!ifs) {
-                        std::cerr << "Error: Could not open torrent file.\n";
+                        LOG_ERROR("WndProc", "Could not open torrent file.");
                         break;
                     }
                     std::vector<unsigned char> fileBuffer(
@@ -523,7 +524,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 j["magnet"] = utf8Url;
                 SendToJS("OpenTorrent", j);
             } else {
-                std::wcout << L"Received URL is neither a valid file nor a stremio:// protocol." << std::endl;
+                LOG_WARN("WndProc", "Received URL is neither a valid file nor a stremio:// protocol.");
             }
         }
         return 0;

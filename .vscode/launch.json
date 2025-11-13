@@ -24,7 +24,7 @@
       "environment": [
         {
           "name": "PATH",
-          "value": "${workspaceFolder}/deps/libmpv/x86_64;${env:PATH}"
+          "value": "${workspaceFolder}/deps/libmpv/x86_64;${workspaceFolder}/deps/discord-rpc/win64-static/lib;${env:PATH}"
         },
         {
           "name": "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",

@@ -10,7 +10,7 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
-#include <iostream>
+#include "../logger/logger.h"
 
 static size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
 {
@@ -119,7 +119,7 @@ static bool VerifySignature(const std::string& data, const std::string& signatur
 void RunAutoUpdaterOnce()
 {
     g_updaterRunning = true;
-    std::cout<<"Checking for Updates.\n";
+    LOG_INFO("RunAutoUpdaterOnce", "Checking for Updates.");
 
     std::string versionContent;
     if(!DownloadString(g_updateUrl, versionContent)) {
@@ -218,13 +218,13 @@ void RunAutoUpdaterOnce()
         }
 
         if(allDownloadsSuccessful) {
-            std::cout<<"Full update needed!\n";
+            LOG_INFO("RunAutoUpdaterOnce", "Full update needed!");
             nlohmann::json j;
             j["type"] = "requestUpdate";
             g_outboundMessages.push_back(j);
             PostMessage(g_hWnd, WM_NOTIFY_FLUSH, 0, 0);
         } else {
-            std::cout<<"Installer download failed. Skipping update prompt.\n";
+            LOG_WARN("RunAutoUpdaterOnce", "Installer download failed. Skipping update prompt.");
         }
     }
 
@@ -265,7 +265,7 @@ void RunAutoUpdaterOnce()
         }
     }
 
-    std::cout<<"[UPDATER]: Update check done!\n";
+    LOG_INFO("RunAutoUpdaterOnce", "[UPDATER]: Update check done!");
 }
 
 void RunInstallerAndExit()

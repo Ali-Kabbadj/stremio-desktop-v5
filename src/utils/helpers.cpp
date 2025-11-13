@@ -1,7 +1,6 @@
 #include "helpers.h"
 
 #include <fstream>
-#include <iostream>
 #include <shellscalingapi.h>
 #include <tlhelp32.h>
 #include <VersionHelpers.h>
@@ -9,6 +8,7 @@
 #include <curl/curl.h>
 
 #include "../core/globals.h"
+#include "../logger/logger.h"
 
 std::string WStringToUtf8(const std::wstring &wstr)
 {
@@ -213,7 +213,7 @@ bool FetchAndParseWhitelist()
             return true;
         }
     } catch (...) {
-        std::wcout << L"[HELPER]: Failed json parsing of domain whitelist for extensions..." << std::endl;
+        LOG_WARN("FetchAndParseWhitelist", "Failed json parsing of domain whitelist for extensions...");
     }
 
     return false;

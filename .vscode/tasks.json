@@ -33,7 +33,6 @@
           "VCPKG_VISUAL_STUDIO_PATH": "${env:ProgramFiles}\\Microsoft Visual Studio\\18\\Insiders"
         }
       },
-      "group": { "kind": "build", "isDefault": true },
       "problemMatcher": ["$msCompile"]
     }
   ]

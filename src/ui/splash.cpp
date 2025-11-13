@@ -1,10 +1,10 @@
 #include "splash.h"
 #include <gdiplus.h>
-#include <iostream>
 
 #include "../core/globals.h"
 #include "../utils/crashlog.h"
 #include "../resource.h"
+#include "../logger/logger.h"
 
 LRESULT CALLBACK SplashWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -120,20 +120,20 @@ void CreateSplashScreen(HWND parent)
     if(!g_hSplash) {
         DWORD errorCode = GetLastError();
         std::string errorMessage = "[SPLASH]: Failed to create splash. Error=" + std::to_string(errorCode);
-        std::cerr << errorMessage << "\n";
+        LOG_ERROR("CreateSplashScreen", errorMessage);
         AppendToCrashLog(errorMessage);
         return;
     }
 
     HRSRC   hRes   = FindResource(g_hInst, MAKEINTRESOURCE(IDR_SPLASH_PNG), RT_RCDATA);
     if(!hRes) {
-        std::cerr << "Could not find PNG resource.\n";
+        LOG_WARN("CreateSplashScreen", "Could not find PNG resource.");
     } else {
         HGLOBAL hData = LoadResource(g_hInst, hRes);
         DWORD   size  = SizeofResource(g_hInst, hRes);
         void*   pData = LockResource(hData);
         if(!pData) {
-            std::cerr << "LockResource returned null.\n";
+            LOG_WARN("CreateSplashScreen", "LockResource returned null.");
         } else {
             IStream* pStream = nullptr;
             if(CreateStreamOnHGlobal(nullptr, TRUE, &pStream) == S_OK)
@@ -150,10 +150,10 @@ void CreateSplashScreen(HWND parent)
                     if(bitmap.GetHBITMAP(Gdiplus::Color(0,0,0,0), &hBmp) == Gdiplus::Ok) {
                         g_hSplashImage = hBmp;
                     } else {
-                        std::cerr << "Failed to create HBITMAP from embedded PNG.\n";
+                        LOG_ERROR("CreateSplashScreen", "Failed to create HBITMAP from embedded PNG.");
                     }
                 } else {
-                    std::cerr << "Failed to decode embedded PNG data.\n";
+                    LOG_ERROR("CreateSplashScreen", "Failed to decode embedded PNG data.");
                 }
                 pStream->Release();
             }

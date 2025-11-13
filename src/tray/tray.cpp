@@ -1,6 +1,4 @@
 #include "tray.h"
-
-#include <iostream>
 #include <windows.h>
 #include <tchar.h>
 #include <windowsx.h>
@@ -10,6 +8,7 @@
 #include "../utils/helpers.h"
 #include "../ui/mainwindow.h"
 #include "../resource.h"
+#include "../logger/logger.h"
 
 static LRESULT CALLBACK DarkTrayMenuProc(HWND, UINT, WPARAM, LPARAM);
 static HWND CreateDarkTrayMenuWindow();
@@ -65,7 +64,7 @@ void LoadCustomMenuFont()
         }
     }
     if (!g_hMenuFont) {
-        std::cerr << "Failed to load custom menu font.\n";
+        LOG_WARN("LoadCustomMenuFont", "Failed to load custom menu font.");
         AppendToCrashLog("[FONT]: Failed to load custom menu font");
     }
 }
@@ -102,7 +101,7 @@ static HWND CreateDarkTrayMenuWindow()
     if(!hMenuWnd) {
         DWORD errorCode = GetLastError();
         std::string errorMessage = "[TRAY]: Failed to create tray" + std::to_string(errorCode);
-        std::cerr << errorMessage << "\n";
+        LOG_ERROR("CreateDarkTrayMenuWindow", errorMessage);
         AppendToCrashLog(errorMessage);
     }
     g_trayHwnd = hMenuWnd;

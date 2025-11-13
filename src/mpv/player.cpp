@@ -1,10 +1,10 @@
 #include "player.h"
-#include <iostream>
 #include <cctype>
 #include "../core/globals.h"
 #include "../utils/crashlog.h"
 #include "../utils/helpers.h"
 #include "../ui/mainwindow.h"
+#include "../logger/logger.h"
 
 // Helper for mpv node => JSON
 static nlohmann::json mpvNodeToJson(const mpv_node* node);
@@ -79,7 +79,7 @@ void HandleMpvEvents()
         if(!ev || ev->event_id==MPV_EVENT_NONE) break;
 
         if(ev->error<0) {
-            std::cerr<<"mpv event error="<<mpv_error_string(ev->error)<<"\n";
+            LOG_ERROR("HandleMpvEvents", "mpv event error=" + std::string(mpv_error_string(ev->error)));
         }
 
         switch(ev->event_id)
@@ -165,7 +165,7 @@ void HandleMpvEvents()
         }
         case MPV_EVENT_SHUTDOWN:
         {
-            std::cout<<"mpv EVENT_SHUTDOWN => terminate\n";
+            LOG_INFO("HandleMpvEvents", "mpv EVENT_SHUTDOWN => terminate");
             mpv_terminate_destroy(g_mpv);
             g_mpv=nullptr;
             break;
@@ -208,7 +208,7 @@ void HandleMpvObserveProp(const std::vector<std::string>& args)
         std::string pname=args[0];
         g_observedProps.insert(pname);
         mpv_observe_property(g_mpv,0,pname.c_str(),MPV_FORMAT_NODE);
-        std::cout<<"Observing prop="<<pname<<"\n";
+        LOG_INFO("HandleMpvObserveProp", "Observing prop=" + pname);
     }).detach();
 }
 
@@ -223,7 +223,7 @@ bool InitMPV(HWND hwnd)
 {
     g_mpv = mpv_create();
     if(!g_mpv){
-        std::cerr<<"mpv_create failed\n";
+        LOG_ERROR("InitMPV", "mpv_create failed");
         AppendToCrashLog("[MPV]: Create failed");
         return false;
     }
@@ -241,15 +241,16 @@ bool InitMPV(HWND hwnd)
     mpv_set_option_string(g_mpv, "config-dir", utf8.c_str());
     mpv_set_option_string(g_mpv, "load-scripts","yes");
     mpv_set_option_string(g_mpv, "config","yes");
-    mpv_set_option_string(g_mpv, "terminal","yes");
-    mpv_set_option_string(g_mpv, "msg-level","all=v");
+    mpv_set_option_string(g_mpv, "terminal","no");
+    // mpv_set_option_string(g_mpv, "msg-level","all=v");
+    mpv_set_option_string(g_mpv, "msg-level", "all=fatal"); 
 
     int64_t wid=(int64_t)hwnd;
     mpv_set_option(g_mpv,"wid", MPV_FORMAT_INT64, &wid);
     mpv_set_wakeup_callback(g_mpv, MpvWakeup, hwnd);
 
     if(mpv_initialize(g_mpv)<0){
-        std::cerr<<"mpv_initialize failed\n";
+        LOG_ERROR("InitMPV", "mpv_initialize failed");
         AppendToCrashLog("[MPV]: Initialize failed");
         return false;
     }
@@ -268,8 +269,8 @@ bool InitMPV(HWND hwnd)
     mpv_set_property_string(g_mpv,"vd-lavc-threads","0");
     mpv_set_property_string(g_mpv,"ad-lavc-threads","0");
     mpv_set_property_string(g_mpv,"audio-fallback-to-null","yes");
-    mpv_set_property_string(g_mpv,"audio-client-name",APP_NAME);
-    mpv_set_property_string(g_mpv,"title",APP_NAME);
+    mpv_set_property_string(g_mpv,"audio-client-name",APP_TITLE_A);
+    mpv_set_property_string(g_mpv,"title",APP_TITLE_A);
 
     return true;
 }

@@ -1,5 +1,5 @@
 {
-  "name": "myapp",
+  "name": "stremio",
   "version": "5.0.18",
   "dependencies": [
     "openssl",
@@ -7,6 +7,7 @@
     "nlohmann-json",
     "webview2",
     "wil",
-    "discord-rpc"
+    "fmt",
+    "glaze"
   ]
 }

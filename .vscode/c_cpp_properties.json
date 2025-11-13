@@ -3,15 +3,18 @@
     {
       "name": "Win32",
       "includePath": [
+        "${workspaceFolder}/deps/**",
         "${workspaceFolder}/**",
         "${workspaceFolder}/vcpkg/packages/wil_x64-windows/include/**",
-        "${workspaceFolder}/build/vcpkg_installed/x64-windows/include/**"
+        "${workspaceFolder}/build/vcpkg_installed/x64-windows/include/**",
+        "${env:ProgramFiles}/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.50.35702/include/**",
+        ""
       ],
       "defines": ["_DEBUG", "UNICODE", "_UNICODE"],
       "windowsSdkVersion": "10.0.26100.0",
-      "compilerPath": "cl.exe",
-      "cStandard": "c17",
-      "cppStandard": "c++17",
+      "compilerPath": "${env:ProgramFiles}/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.50.35702/bin/Hostx64/x64/cl.exe",
+      "cStandard": "c23",
+      "cppStandard": "c++20",
       "intelliSenseMode": "windows-msvc-x64"
     }
   ],

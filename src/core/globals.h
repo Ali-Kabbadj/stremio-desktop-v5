@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <wil/com.h>
 #include "nlohmann/json.hpp"
+#include <tchar.h>
 
 #include "mpv/client.h"
 #include <WebView2.h>
@@ -24,8 +25,18 @@ using json = nlohmann::json;
 // -----------------------------------------------------------------------------
 // App info
 // -----------------------------------------------------------------------------
-#define APP_TITLE "Stremio - Freedom to Stream"
-#define APP_NAME  "Stremio"
+// Narrow UTF-8 literal for libraries that expect char*
+#define APP_TITLE_A "Stremio - Freedom to Stream"
+#define APP_NAME_A  "Stremio"
+
+// Wide literal for Windows APIs / TCHAR builds
+#define APP_TITLE_W L"Stremio - Freedom to Stream"
+#define APP_NAME_W  L"Stremio"
+
+// Optional: TCHAR macro (keeps previous pattern)
+#define APP_TITLE_T TEXT("Stremio - Freedom to Stream")
+#define APP_NAME_T  TEXT("Stremio")
+
 #define APP_CLASS L"Stremio"
 #define APP_VERSION "5.0.20"
 
@@ -62,6 +73,7 @@ extern const std::vector<std::wstring> g_subtitleExtensions;
 // custom messages
 #define WM_MPV_WAKEUP (WM_APP + 2)
 #define WM_TRAYICON   (WM_APP + 1)
+#define WM_RUN_UPDATER (WM_APP + 3)
 
 // Node server
 extern std::atomic_bool g_nodeRunning;

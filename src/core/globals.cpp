@@ -1,8 +1,9 @@
 #include "globals.h"
 
-// Window & instance
-CHAR  szWindowClass[]   = APP_NAME;
-CHAR  szTitle[]         = APP_TITLE;
+TCHAR szWindowClass[] = APP_NAME_T;
+TCHAR szTitle[]       = APP_TITLE_T;
+const char szWindowClass_utf8[] = APP_NAME_A;
+const char szTitle_utf8[]       = APP_TITLE_A;
 
 HINSTANCE g_hInst   = nullptr;
 HWND      g_hWnd    = nullptr;
@@ -20,11 +21,9 @@ std::string  g_updateUrl= "https://raw.githubusercontent.com/Zaarrg/stremio-desk
 std::wstring  g_extensionsDetailsUrl= L"https://raw.githubusercontent.com/Zaarrg/stremio-desktop-v5/refs/heads/webview-windows/extensions/extensions.json";
 std::wstring  g_webuiUrl;
 
-// Command-line args
 bool g_streamingServer      = true;
 bool g_autoupdaterForceFull = false;
 
-// mpv
 mpv_handle* g_mpv = nullptr;
 std::set<std::string> g_observedProps;
 bool g_initialSet = false;
@@ -36,7 +35,6 @@ const std::vector<std::wstring> g_subtitleExtensions = {
     L".xml", L".lrc", L".pjs", L".mpl", L".usf",
     L".qtvr"
 };
-// Node
 std::atomic_bool g_nodeRunning = false;
 std::thread      g_nodeThread;
 HANDLE           g_nodeProcess = nullptr;

@@ -1,13 +1,11 @@
 #pragma comment(linker, "/SUBSYSTEM:WINDOWS")
-#pragma comment(linker, "/ENTRY:mainCRTStartup")
-
-#include "discord_rpc.h"
 #include <windows.h>
 #include <VersionHelpers.h>
 #include <gdiplus.h>
-#include <iostream>
 #include <shellscalingapi.h>
 #include <sstream>
+#include <stdio.h>
+#include <shellapi.h> 
 
 #include "core/globals.h"
 #include "mpv/player.h"
@@ -21,9 +19,10 @@
 #include "utils/discord.h"
 #include "utils/helpers.h"
 #include "webview/webview.h"
-// This started as 1-week project so please don't take the code to seriously
-int main(int argc, char *argv[]) {
-  // Catch unhandled exceptions
+#include "logger/logger.h"
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
+{
   SetUnhandledExceptionFilter([](EXCEPTION_POINTERS *info) -> LONG {
     std::wstringstream ws;
     ws << L"Unhandled exception! Code=0x" << std::hex
@@ -32,9 +31,21 @@ int main(int argc, char *argv[]) {
     Cleanup();
     return EXCEPTION_EXECUTE_HANDLER;
   });
-  atexit(Cleanup);
+  Logger::Init(GetExeDirectory() + L"\\portable_config");
+  InitializeDiscord();
+  int argc;
+  LPWSTR* argvW = CommandLineToArgvW(GetCommandLineW(), &argc);
+  if (!argvW) {
+      return -1;
+  }
+  
+  std::vector<char*> argv(argc);
+  std::vector<std::string> argv_strings(argc);
+  for (int i = 0; i < argc; ++i) {
+      argv_strings[i] = WStringToUtf8(argvW[i]);
+      argv[i] = &argv_strings[i][0];
+  }
 
-  // DPI
   if (IsWindowsVersionOrGreater(10, 0, 14393)) {
     typedef BOOL(WINAPI * SetDpiCtxFn)(DPI_AWARENESS_CONTEXT);
     auto setDpiAwarenessContext = (SetDpiCtxFn)GetProcAddress(
@@ -43,11 +54,9 @@ int main(int argc, char *argv[]) {
       setDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     }
   } else {
-    // Fallback for Windows 8.1 and Windows 10 before 1607:
     SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
   }
 
-  // parse cmd line
   for (int i = 1; i < argc; i++) {
     std::string arg(argv[i]);
     if (arg.rfind("--webui-url=", 0) == 0) {
@@ -61,14 +70,14 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  // single instance
   std::wstring launchProtocol;
-  if (!CheckSingleInstance(argc, argv, launchProtocol)) {
+  if (!CheckSingleInstance(argc, argv.data(), launchProtocol)) {
+    LocalFree(argvW);
     return 0;
   }
   g_launchProtocol = launchProtocol;
+  LocalFree(argvW);
 
-  // check stremio-runtime duplicates
   std::vector<std::wstring> processesToCheck = {L"stremio.exe",
                                                 L"stremio-runtime.exe"};
   if (IsDuplicateProcessRunning(processesToCheck)) {
@@ -78,27 +87,21 @@ int main(int argc, char *argv[]) {
                 L"Stremio Already Running", MB_OK | MB_ICONWARNING);
   }
 
-  // init GDI+
   Gdiplus::GdiplusStartupInput gpsi;
   if (Gdiplus::GdiplusStartup(&g_gdiplusToken, &gpsi, nullptr) != Gdiplus::Ok) {
     AppendToCrashLog(L"[BOOT]: GdiplusStartup failed.");
     return 1;
   }
 
-  // Load config
   LoadSettings();
 
-  // Initialize Discord RPC
-  InitializeDiscord();
-
   // Updater
-  g_updaterThread = std::thread(RunAutoUpdaterOnce);
-  g_updaterThread.detach();
+  // g_updaterThread = std::thread(RunAutoUpdaterOnce);
+  // g_updaterThread.detach();
 
-  g_hInst = GetModuleHandle(nullptr);
+  g_hInst = hInstance;
   g_darkBrush = CreateSolidBrush(RGB(0, 0, 0));
 
-  // Register main window class
   WNDCLASSEX wcex = {0};
   wcex.cbSize = sizeof(WNDCLASSEX);
   wcex.style = CS_HREDRAW | CS_VREDRAW;
@@ -120,16 +123,13 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // Add PlayPause Hotkey
   if (!RegisterHotKey(g_hWnd, 1, 0, VK_MEDIA_PLAY_PAUSE)) {
     AppendToCrashLog(L"[BOOT]: Failed to register hotkey!");
   }
 
-  // Scale Values with DPI
   ScaleWithDPI();
   LoadCustomMenuFont();
 
-  // Load Saved position
   WINDOWPLACEMENT wp;
   if (LoadWindowPlacement(wp)) {
     SetWindowPlacement(g_hWnd, &wp);
@@ -140,37 +140,31 @@ int main(int argc, char *argv[]) {
     UpdateWindow(g_hWnd);
   }
 
-  // create splash
+  #ifdef NDEBUG 
+    PostMessage(g_hWnd, WM_RUN_UPDATER, 0, 0);
+  #endif
+
+
   CreateSplashScreen(g_hWnd);
 
-  // init mpv
   if (!InitMPV(g_hWnd)) {
     DestroyWindow(g_hWnd);
     return 1;
   }
 
-  // node
   if (g_streamingServer) {
     StartNodeServer();
   }
 
-  // webview
   InitWebView2(g_hWnd);
 
-  // message loop
   MSG msg;
   while (GetMessage(&msg, nullptr, 0, 0)) {
     TranslateMessage(&msg);
     DispatchMessage(&msg);
-
-    // Run Discord RPC callbacks
-    Discord_RunCallbacks();
   }
 
-  if (g_darkBrush) {
-    DeleteObject(g_darkBrush);
-    g_darkBrush = nullptr;
-  }
-  std::cout << "Exiting...\n";
+  Cleanup();
+  
   return (int)msg.wParam;
 }

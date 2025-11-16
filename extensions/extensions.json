@@ -41,6 +41,20 @@
     },
     "page": "manage.html"
   },
+  "user_js_css": {
+    "name": "User JavaScript and CSS",
+    "extension_name": "UserJavaScriptandCSS",
+    "logo": "https://lh3.googleusercontent.com/1TSw8ZPwr2VvUZlY1cbAPOWo5cisrfpazmTpfGH4YWGTLCJLUq23LMSKuS5ee-bBP5C0GL8wsbpV9iQ9zLEQ6Dv8Vw=s60",
+    "description": "Userscript's and userstyle's — simple extension to inject your own JavaScript or CSS rules into any page. Features include instant execution, custom libraries, URL masking and live CSS. Documentation: https://tenrabbits.github.io/user-js-css-docs/",
+    "types": ["Browser Extension", "Developer Tools"],
+    "behaviorHints": {
+      "configurable": true,
+      "configurationRequired": false,
+      "adult": false,
+      "p2p": false
+    },
+    "page": "https://chromewebstore.google.com/detail/user-javascript-and-css/nbhcbdghjpllgmfilhnhkllmkecfmpld"
+  },
   "fallback": {
     "name": "",
     "extension_name": "",
